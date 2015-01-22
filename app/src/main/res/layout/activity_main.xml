@@ -1,0 +1,67 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
+    android:layout_height="match_parent" android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    android:paddingBottom="@dimen/activity_vertical_margin" tools:context=".MainActivity">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent">
+
+        <SurfaceView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:id="@+id/id_surfaceView_perView"
+            android:layout_weight="6" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/id_textView_output"
+            android:layout_alignTop="@+id/id_btn_shot"
+            android:layout_toRightOf="@+id/id_btn_shot"
+            android:text="123"
+            android:layout_alignParentBottom="true"
+            android:layout_alignRight="@+id/id_btn_sent2server"
+            android:layout_alignEnd="@+id/id_btn_sent2server" />
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1">
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="preview"
+                android:id="@+id/id_btn_preview"
+                android:layout_alignParentBottom="true"
+                android:layout_alignParentLeft="true"
+                android:layout_alignParentStart="true" />
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="get pic"
+                android:id="@+id/id_btn_shot"
+                android:layout_alignTop="@+id/id_btn_preview"
+                android:layout_toRightOf="@+id/id_btn_preview"
+                android:layout_toEndOf="@+id/id_btn_preview" />
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="setn2Server"
+                android:id="@+id/id_btn_sent2server"
+                android:layout_alignTop="@+id/id_btn_shot"
+                android:layout_toRightOf="@+id/id_btn_shot"
+                android:layout_toEndOf="@+id/id_btn_shot" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</RelativeLayout>
