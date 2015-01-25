@@ -1,259 +1,226 @@
 package com.example.pinetum.cameratest;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.Configuration;
-import android.graphics.ImageFormat;
-import android.graphics.SurfaceTexture;
+import android.content.pm.PackageManager;
+
+import android.graphics.Bitmap;
 import android.hardware.Camera;
-import android.hardware.camera2.CameraAccessException;
-import android.hardware.camera2.CameraCharacteristics;
-import android.hardware.camera2.CameraManager;
-import android.hardware.camera2.params.StreamConfigurationMap;
-import android.media.ImageReader;
-import android.os.Handler;
-import android.support.v7.app.ActionBarActivity;
+
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.util.Log;
-import android.util.Size;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.SurfaceView;
-import android.view.TextureView;
+import android.view.Gravity;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.TextView;
-
-import java.io.ByteArrayOutputStream;
+import android.widget.FrameLayout;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URL;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
+import java.text.SimpleDateFormat;
 
-import com.loopj.android.http.*;
-
-import org.apache.http.Header;
-import org.apache.http.HttpResponse;
+import java.util.Date;
 
 
-public class MainActivity extends ActionBarActivity {
-
-    final String SERVER_URL ="http://google.com.tw";
-
-    private Button      btn_perView;
-    private Button      btn_shot;
-    private Button      btn_sent2server;
-    private SurfaceView sfv_perview;
-    private TextView    textV_output;
-    private File        mFile;
-
-    /**
-     * Camera state: Showing camera preview.
-     */
-    private static final int STATE_PREVIEW = 0;
-
-    /**
-     * Camera state: Waiting for the focus to be locked.
-     */
-    private static final int STATE_WAITING_LOCK = 1;
-    /**
-     * Camera state: Waiting for the exposure to be precapture state.
-     */
-    private static final int STATE_WAITING_PRECAPTURE = 2;
-    /**
-     * Camera state: Waiting for the exposure state to be something other than precapture.
-     */
-    private static final int STATE_WAITING_NON_PRECAPTURE = 3;
-    /**
-     * Camera state: Picture was taken.
-     */
-    private static final int STATE_PICTURE_TAKEN = 4;
+import android.hardware.Camera.PictureCallback;
+import android.hardware.Camera.CameraInfo;
+import android.widget.Toast;
 
 
-    private ImageReader mImageReader;
+public class MainActivity extends Activity {
+    public static Bitmap           m_bitmap_shutter;
+
+
+
+    private Button          m_btn_shot;
+    private Camera          m_Camera_myCam;
+    private FrameLayout     m_frameLayout_main;
+    private CameraPreview   m_CameraPreview_perview;
+    private PictureCallback mPicture;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        setContentView(R.layout.activity_camera_perview);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
+        m_btn_shot          = new Button(this);
+        m_frameLayout_main        = (FrameLayout) findViewById(R.id.id_frameLayout_main);
+        m_CameraPreview_perview            = new CameraPreview(this, m_Camera_myCam);
+        m_btn_shot.setBackgroundDrawable(getResources().getDrawable(R.drawable.ic_launcher));
+        m_btn_shot.setText("asdafdgsfhgjhg");
+        FrameLayout.LayoutParams LP_shutterBtn = new FrameLayout.LayoutParams(m_btn_shot.getWidth(), m_btn_shot.getHeight());
+        LP_shutterBtn.gravity = Gravity.CENTER|Gravity.BOTTOM;
 
-
-        btn_perView        = (Button)       findViewById(R.id.id_btn_preview);
-        btn_shot           = (Button)       findViewById(R.id.id_btn_shot);
-        btn_sent2server    = (Button)       findViewById(R.id.id_btn_sent2server);
-        sfv_perview        = (SurfaceView)  findViewById(R.id.id_surfaceView_perView);
-        textV_output       = (TextView)     findViewById(R.id.id_textView_output);
-
-        CameraManager manager = (CameraManager) this.getSystemService(Context.CAMERA_SERVICE);
-
-        try {
-            for (String cameraId : manager.getCameraIdList()) {
-                CameraCharacteristics characteristics
-                        = manager.getCameraCharacteristics(cameraId);
-
-                // We don't use a front facing camera in this sample.
-                if (characteristics.get(CameraCharacteristics.LENS_FACING)
-                        == CameraCharacteristics.LENS_FACING_FRONT) {
-                    continue;
-                }
-
-                StreamConfigurationMap map = characteristics.get(
-                        CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-
-                // For still image captures, we use the largest available size.
-                Size largest = Collections.max(
-                        Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)),
-                        new CompareSizesByArea());
-                mImageReader = ImageReader.newInstance(largest.getWidth(), largest.getHeight(),
-                        ImageFormat.JPEG, /*maxImages*/2);
-                mImageReader.setOnImageAvailableListener(
-                        mOnImageAvailableListener, mBackgroundHandler);
-
-                // Danger, W.R.! Attempting to use too large a preview size could  exceed the camera
-                // bus' bandwidth limitation, resulting in gorgeous previews but the storage of
-                // garbage capture data.
-                mPreviewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class),
-                        width, height, largest);
-
-                // We fit the aspect ratio of TextureView to the size of preview we picked.
-                int orientation = getResources().getConfiguration().orientation;
-                if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                    mTextureView.setAspectRatio(
-                            mPreviewSize.getWidth(), mPreviewSize.getHeight());
-                } else {
-                    mTextureView.setAspectRatio(
-                            mPreviewSize.getHeight(), mPreviewSize.getWidth());
-                }
-
-                mCameraId = cameraId;
-                return;
-            }
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        } catch (NullPointerException e) {
-            // Currently an NPE is thrown when the Camera2API is used but not supported on the
-            // device this code runs.
-            //new ErrorDialog().show(getFragmentManager(), "dialog");
-            Log.e("cam",e.toString());
-        }
-
-        btn_shot.setOnClickListener(new View.OnClickListener() {
+        m_frameLayout_main.addView(m_CameraPreview_perview, FrameLayout.LayoutParams.WRAP_CONTENT );
+        m_frameLayout_main.addView(m_btn_shot, LP_shutterBtn);
+        m_CameraPreview_perview.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.i("I","btn_shot click");
-                //--TODO stop perview
+                m_Camera_myCam.autoFocus(getFocusCallBack(false));
+            }
+        });
+        m_btn_shot.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                m_Camera_myCam.autoFocus(getFocusCallBack(true));
 
             }
         });
-
     }
-
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
+    private void shutCamera(){
+        m_Camera_myCam.takePicture(null, null, mPicture);//raw postView jpg callback
     }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+    private boolean hasCamera(Context context) {
+        //check if the device has camera
+        if (context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA)) {
             return true;
+        } else {
+            return false;
         }
-
-        return super.onOptionsItemSelected(item);
     }
-    private boolean postFile2Server(URL serverURL, String postKeyName, File file ){
-        //--TODO HTTP POST FILE
 
-        //此處為用於存放用於上傳的檔案
-        RequestParams params = new RequestParams();//建立key-value用於ＨＴＴＰ-ＰＯＳＴ
-        AsyncHttpClient myPostFile = new AsyncHttpClient();//使用open的第三方同步httpLibrary(import com.loopj.android.http.*;)
-        //把傳入的file放入value中
-        //key需對應於server端取得requesr.form.file時的名稱，此處為cvt2gray
-        try{
-            params.put(postKeyName, file);
-        } catch(FileNotFoundException e) {
-            Log.e("params","add file to params fail:" + e.toString());
+    private void releaseCamera() {
+        // stop and release camera
+        if (m_Camera_myCam != null) {
+            m_Camera_myCam.release();
+            m_Camera_myCam = null;
         }
-
-        myPostFile.post(SERVER_URL,params,new FileAsyncHttpResponseHandler(this) {
+    }
+    private Camera.AutoFocusCallback getFocusCallBack(final boolean shutter){
+        Camera.AutoFocusCallback focus = new Camera.AutoFocusCallback() {
             @Override
-            public void onFailure(int i, Header[] headers, Throwable throwable, File file) {
-                Log.e("HTTP","POST Faileure:");
+            public void onAutoFocus(boolean success, Camera camera) {
+                Log.i("Camera","autoFocus:"+String.valueOf(success));
+                if(success && shutter)
+                    shutCamera();
+                else if(!success)
+                    Toast.makeText(getApplicationContext(), "對焦失敗",Toast.LENGTH_SHORT).show();
+
             }
+        };
+        return  focus;
+    }
+    private PictureCallback getPictureCallback() {
+        PictureCallback picture = new PictureCallback() {
 
             @Override
-            public void onSuccess(int i, Header[] headers, File file) {
-                byte[] mjpgBytes = null;
-                Intent showImageIntent = new Intent(getApplicationContext(), ImageActivity.class);
-                try{
-                    FileInputStream fis = new FileInputStream(file);
-                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            public void onPictureTaken(byte[] data, Camera camera) {
+                //make a new picture file
+                String filePath = getOutputMediaFilePath();
+                File pictureFile = new File(filePath);
 
-                    byte[] buf = new byte[1024];
-                    try {
-                        for (int readNum; (readNum = fis.read(buf)) != -1;) {
-                            bos.write(buf, 0, readNum); //no doubt here is 0
-                            //Writes len bytes from the specified byte array starting at offset off to this byte array output stream.
-                            System.out.println("read " + readNum + " bytes,");
-                        }
-                    } catch (IOException ex) {
-                        Log.e("File","cvtFile2Byte error");
-                    }
-                    mjpgBytes = bos.toByteArray();
-                }catch (Exception e){
-                    Log.e("File","cvtFile2Byte error" + e.toString());
+                if (pictureFile == null) {
+                    return;
                 }
+                try {
+                    //write the file
+                    FileOutputStream fos = new FileOutputStream(pictureFile);
+                    fos.write(data);
+                    fos.close();
+                    Toast toast = Toast.makeText(MainActivity.this, "Picture saved: " + pictureFile.getName(), Toast.LENGTH_LONG);
+                    toast.show();
 
-
-                showImageIntent.putExtra("jpgBytes", mjpgBytes);
-                startActivity(showImageIntent);
+                } catch (FileNotFoundException e) {
+                } catch (IOException e) {
+                }
+                Log.i("shot","bytes:"+String.valueOf(data.length));
+                //refresh camera to continue preview
+                //m_CameraPreview_perview.refreshCamera(m_Camera_myCam);
+                //不能在intent中放入超過40kb資料
+                Intent go2ImgActvty = new Intent(getBaseContext(), ImageActivity.class);
+                go2ImgActvty.putExtra("jpgPath",filePath);
+                startActivity(go2ImgActvty);
             }
-        });
-
-        return true;
+        };
+        return picture;
     }
-    static class CompareSizesByArea implements Comparator<Size> {
+    private int findBackFacingCamera() {
+        int cameraId = -1;
+        //Search for the back facing camera
+        //get the number of cameras
+        int numberOfCameras = Camera.getNumberOfCameras();
+        //for every camera check
+        for (int i = 0; i < numberOfCameras; i++) {
+            CameraInfo info = new CameraInfo();
+            Camera.getCameraInfo(i, info);
+            if (info.facing == CameraInfo.CAMERA_FACING_BACK) {
+                cameraId = i;
+                break;
+            }
+        }
+        return cameraId;
+    }
+    private static String getOutputMediaFilePath() {
+        //make a new file directory inside the "sdcard" folder
+        File mediaStorageDir = new File("/sdcard/", "MyCamera");
 
-        @Override
-        public int compare(Size lhs, Size rhs) {
-            // We cast here to ensure the multiplications won't overflow
-            return Long.signum((long) lhs.getWidth() * lhs.getHeight() -
-                    (long) rhs.getWidth() * rhs.getHeight());
+        //if this "JCGCamera folder does not exist
+        if (!mediaStorageDir.exists()) {
+            //if you cannot make this folder return
+            if (!mediaStorageDir.mkdirs()) {
+                return null;
+            }
         }
 
+        //take the current timeStamp
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        //File mediaFile;
+        //and make a media file:
+        //mediaFile = new File(mediaStorageDir.getPath() + File.separator + "IMG_" + timeStamp + ".jpg");
+
+        return mediaStorageDir.getPath() + File.separator + "IMG_" + timeStamp + ".jpg";
     }
-    /**
-     * This a callback object for the {@link ImageReader}. "onImageAvailable" will be called when a
-     * still image is ready to be saved.
-     */
-    private final ImageReader.OnImageAvailableListener mOnImageAvailableListener
-            = new ImageReader.OnImageAvailableListener() {
-
-        @Override
-        public void onImageAvailable(ImageReader reader) {
-            mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mFile));
+    public void onResume() {
+        super.onResume();
+        if (!hasCamera(this)) {
+            Toast toast = Toast.makeText(this, "Sorry, your phone does not have a camera!", Toast.LENGTH_LONG);
+            toast.show();
+            finish();
         }
-
+        if (m_Camera_myCam == null) {
+            openCamera(findBackFacingCamera());
+            m_Camera_myCam.setDisplayOrientation(90);
+            m_Camera_myCam.setFaceDetectionListener(new Camera.FaceDetectionListener() {
+                @Override
+                public void onFaceDetection(Camera.Face[] faces, Camera camera) {
+                    Log.i("findFace!!", String.valueOf(faces.length));
+                }
+            });
+        }
     };
-    /**
-     * A {@link Handler} for running tasks in the background.
-     */
-    private Handler mBackgroundHandler;
+    private void openCamera(int cameraId){
+
+        if (cameraId >= 0) {
+
+            m_Camera_myCam = Camera.open(cameraId);
+            Camera.Parameters myParameters = m_Camera_myCam.getParameters();
+
+            myParameters.setFocusMode("auto");
+            DisplayMetrics metrics = new DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getMetrics(metrics);
+            myParameters.setPreviewSize(metrics.heightPixels ,metrics.widthPixels);
+            myParameters.setPictureSize(metrics.heightPixels ,metrics.widthPixels);
+            Log.i("setPreviewSize", metrics.widthPixels + "x" + metrics.heightPixels);
+            m_Camera_myCam.setParameters(myParameters);
+            mPicture = getPictureCallback();
+            m_CameraPreview_perview.refreshCamera(m_Camera_myCam);
+        }
+
+    }
+    @Override
+    protected void onPause() {
+        super.onPause();
+        //when on Pause, release camera in order to be used from other applications
+        releaseCamera();
+    }
+
 
 }
+
