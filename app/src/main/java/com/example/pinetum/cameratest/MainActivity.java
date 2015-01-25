@@ -3,6 +3,7 @@ package com.example.pinetum.cameratest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 
 import android.graphics.Bitmap;
@@ -12,7 +13,9 @@ import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.OrientationEventListener;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -35,48 +38,86 @@ public class MainActivity extends Activity {
 
 
 
-    private Button          m_btn_shot;
+    private Button          m_btn_shut;
     private Camera          m_Camera_myCam;
     private FrameLayout     m_frameLayout_main;
     private CameraPreview   m_CameraPreview_perview;
     private PictureCallback mPicture;
-
-
+    private DisplayMetrics  m_metrics ;
+    private int             m_n_orientation = 0;//angle
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+//        全螢幕狀態
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                                                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+//        強制直螢幕顯示
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         setContentView(R.layout.activity_camera_perview);
+//        螢幕不關
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+//        算出螢幕大小
+        m_metrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(m_metrics);
+//        初始化變數
+        m_btn_shut                  = new Button(this);
+        m_CameraPreview_perview     = new CameraPreview(this, m_Camera_myCam);
+        m_frameLayout_main          = (FrameLayout) findViewById(R.id.id_frameLayout_main);
+//        設定按鈕背景
+        //m_btn_shut.setBackground(getResources().getDrawable(R.drawable.shutter));
+        m_btn_shut.setBackgroundDrawable(getResources().getDrawable(R.drawable.shutter));
+        FrameLayout.LayoutParams position_shutterBtn = new FrameLayout.LayoutParams(m_btn_shut.getWidth(), m_btn_shut.getHeight());
+        position_shutterBtn.gravity = Gravity.CENTER_HORIZONTAL;
+//        加入元件
+        m_frameLayout_main.addView(m_CameraPreview_perview);
+        m_frameLayout_main.addView(m_btn_shut,m_metrics.widthPixels/3,m_metrics.widthPixels/3);
 
-        m_btn_shot          = new Button(this);
-        m_frameLayout_main        = (FrameLayout) findViewById(R.id.id_frameLayout_main);
-        m_CameraPreview_perview            = new CameraPreview(this, m_Camera_myCam);
-        m_btn_shot.setBackgroundDrawable(getResources().getDrawable(R.drawable.ic_launcher));
-        m_btn_shot.setText("asdafdgsfhgjhg");
-        FrameLayout.LayoutParams LP_shutterBtn = new FrameLayout.LayoutParams(m_btn_shot.getWidth(), m_btn_shot.getHeight());
-        LP_shutterBtn.gravity = Gravity.CENTER|Gravity.BOTTOM;
-
-        m_frameLayout_main.addView(m_CameraPreview_perview, FrameLayout.LayoutParams.WRAP_CONTENT );
-        m_frameLayout_main.addView(m_btn_shot, LP_shutterBtn);
+//        觸碰自動對焦
         m_CameraPreview_perview.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 m_Camera_myCam.autoFocus(getFocusCallBack(false));
             }
         });
-        m_btn_shot.setOnClickListener(new View.OnClickListener() {
+//        按鈕對焦並拍照
+        m_btn_shut.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 m_Camera_myCam.autoFocus(getFocusCallBack(true));
 
             }
         });
+        OrientationEventListener myListen = new OrientationEventListener(this) {
+            @Override
+            public void onOrientationChanged(int orientation) {
+                m_n_orientation = orientation;
+                //Log.i("orientation","::"+orientation);
+            }
+        };
+        if(myListen.canDetectOrientation())
+            myListen.enable();
+
     }
-    private void shutCamera(){
+    //呼叫相機啟動快門，完成後會呼叫callBack
+    private void getCameraPic(){
+        int phone_orientation = m_n_orientation;//裝置角度
+        int pic_rotation = 0;//算出圖片rota
+        android.hardware.Camera.CameraInfo info = new android.hardware.Camera.CameraInfo();
+        android.hardware.Camera.getCameraInfo(findBackFacingCamera(), info);
+        phone_orientation = (phone_orientation + 45) / 90 * 90;
+        //google提供的角度算法，因為有分前後鏡頭，角度算法不同，上面呼叫的findBackFace為直接回傳後面相機id
+        if (info.facing == CameraInfo.CAMERA_FACING_FRONT)
+            pic_rotation = (info.orientation - phone_orientation + 360) % 360;
+        else  // back-facing camera
+            pic_rotation = (info.orientation + phone_orientation) % 360;
+
+        Camera.Parameters myParameters = m_Camera_myCam.getParameters();
+        myParameters.setRotation(pic_rotation);
+        m_Camera_myCam.setParameters(myParameters);
+
         m_Camera_myCam.takePicture(null, null, mPicture);//raw postView jpg callback
     }
+    //檢查機器是否支援相機功能
     private boolean hasCamera(Context context) {
         //check if the device has camera
         if (context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA)) {
@@ -99,7 +140,7 @@ public class MainActivity extends Activity {
             public void onAutoFocus(boolean success, Camera camera) {
                 Log.i("Camera","autoFocus:"+String.valueOf(success));
                 if(success && shutter)
-                    shutCamera();
+                    getCameraPic();
                 else if(!success)
                     Toast.makeText(getApplicationContext(), "對焦失敗",Toast.LENGTH_SHORT).show();
 
@@ -200,14 +241,14 @@ public class MainActivity extends Activity {
         if (cameraId >= 0) {
 
             m_Camera_myCam = Camera.open(cameraId);
+//            複寫相機自動對焦設定，圖片寬高設定
             Camera.Parameters myParameters = m_Camera_myCam.getParameters();
 
             myParameters.setFocusMode("auto");
-            DisplayMetrics metrics = new DisplayMetrics();
-            getWindowManager().getDefaultDisplay().getMetrics(metrics);
-            myParameters.setPreviewSize(metrics.heightPixels ,metrics.widthPixels);
-            myParameters.setPictureSize(metrics.heightPixels ,metrics.widthPixels);
-            Log.i("setPreviewSize", metrics.widthPixels + "x" + metrics.heightPixels);
+
+            myParameters.setPreviewSize(m_metrics.heightPixels ,m_metrics.widthPixels);
+            myParameters.setPictureSize(m_metrics.heightPixels ,m_metrics.widthPixels);
+            Log.i("setPreviewSize", m_metrics.widthPixels + "x" + m_metrics.heightPixels);
             m_Camera_myCam.setParameters(myParameters);
             mPicture = getPictureCallback();
             m_CameraPreview_perview.refreshCamera(m_Camera_myCam);

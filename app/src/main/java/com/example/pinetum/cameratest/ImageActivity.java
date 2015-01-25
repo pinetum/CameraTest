@@ -2,6 +2,7 @@ package com.example.pinetum.cameratest;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.Image;
@@ -36,6 +37,7 @@ public class ImageActivity extends Activity{
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_image);
+        //setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         m_imageView_result      = (ImageView)   findViewById(R.id.id_imageView_result);
         Intent m_intent = getIntent();
         String jpgfilePath = m_intent.getStringExtra("jpgPath");
@@ -45,7 +47,9 @@ public class ImageActivity extends Activity{
         }
         else{
             Bitmap bImg = BitmapFactory.decodeFile(jpgfilePath);
+
             m_imageView_result.setImageBitmap(bImg);
+
         }
     }
 
