@@ -3,19 +3,53 @@
     android:orientation="vertical" android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="setn2Server"
-        android:id="@+id/button2"
-        android:layout_alignTop="@+id/id_btn_shot"
-        android:layout_toRightOf="@+id/id_btn_shot"
-        android:layout_toEndOf="@+id/id_btn_shot"
-        android:layout_gravity="center_horizontal" />
+    <FrameLayout
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent">
 
-    <ImageView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/id_imageView_result"
-        android:layout_gravity="center_horizontal" />
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:id="@+id/id_imageView_result"
+            android:layout_gravity="center_horizontal" />
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content">
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="GO"
+                android:id="@+id/id_btn_2server"
+                android:layout_alignTop="@+id/id_btn_shot"
+                android:layout_toRightOf="@+id/id_btn_shot"
+                android:layout_toEndOf="@+id/id_btn_shot"
+                android:layout_gravity="center_horizontal"
+                android:alpha="0.3"
+                android:textColor="#ffffffff"
+                android:background="#ff000000" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:text="api:"
+                android:id="@+id/textView"
+                android:textStyle="bold"
+                android:textColor="#ffffffff" />
+
+            <EditText
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:id="@+id/id_editTexidt_function"
+                android:text="cvt2gray"
+                android:textIsSelectable="false"
+                android:background="#ff000000"
+                android:alpha="0.3"
+                android:textColor="#ffffffff" />
+        </LinearLayout>
+
+    </FrameLayout>
+
 </LinearLayout>
