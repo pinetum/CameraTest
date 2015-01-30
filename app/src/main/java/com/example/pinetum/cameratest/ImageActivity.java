@@ -130,11 +130,16 @@ public class ImageActivity extends Activity{
                 m_imageView_result.setImageBitmap(BitmapFactory.decodeFile(file.getPath()));
                 Log.i("File",file.getPath());
                 m_PGDialog.dismiss();
-                m_editText_funName.setText("123");
+
             }
         });
 
         return true;
     }
 
+    @Override
+    public void finish() {
+        overridePendingTransition(R.anim.slide_from_right, R.anim.slide_from_left);
+        super.finish();
+    }
 }

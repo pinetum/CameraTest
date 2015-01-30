@@ -218,6 +218,7 @@ public class MainActivity extends Activity {
                 Intent go2ImgActvty = new Intent(getBaseContext(), ImageActivity.class);
                 go2ImgActvty.putExtra("jpgPath",filePath);
                 startActivity(go2ImgActvty);
+                overridePendingTransition(R.anim.slide_from_left, R.anim.slide_from_right);
                 m_btn_shut.setSelected(false);
             }
         };
